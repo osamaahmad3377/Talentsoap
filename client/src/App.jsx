@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   Home, Boxes, Factory, ShoppingCart, Truck, Users, Building2, Wallet, BarChart3, UserCheck, Search, Settings as Cog,
@@ -11,6 +11,7 @@ import { StockList, ItemDetail } from './pages/Stock.jsx';
 import { ProductionList, NewBatch } from './pages/Production.jsx';
 import { SalesList, NewSale, Invoice } from './pages/Sales.jsx';
 import { ReturnsList, CreditNote } from './pages/Returns.jsx';
+import { Setup } from './pages/Setup.jsx';
 import { PurchaseList, NewPurchase, PurchaseDetail } from './pages/Purchases.jsx';
 import { PartyList, PartyLedger } from './pages/Parties.jsx';
 import CashBank from './pages/Cash.jsx';
@@ -111,6 +112,14 @@ function Shell({ children }) {
 
 function Login() {
   const { refreshMe } = useApp();
+  const [fresh, setFresh] = useState(null);
+  useEffect(() => { api.get('/setup/status').then((x) => setFresh(!!x.fresh)).catch(() => setFresh(false)); }, []);
+  if (fresh === null) return <Loading />;
+  if (fresh) return <Setup onDone={() => setFresh(false)} />;
+  return <LoginForm refreshMe={refreshMe} />;
+}
+
+function LoginForm({ refreshMe }) {
   const [u, setU] = useState('');
   const [p, setP] = useState('');
   const [run, busy] = useAction();

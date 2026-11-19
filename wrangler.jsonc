@@ -1,0 +1,36 @@
+// Cloudflare Workers settings for the Soap Factory ERP.
+// Cloudflare builds this from GitHub: "npm run build" makes the screens,
+// then "npx wrangler deploy" uploads the screens and the server.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "talentsoap",
+  "main": "server/src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The screens. Anything that is not /api/* is served straight from here.
+  "assets": {
+    "directory": "client/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // The database: one Durable Object with built-in SQLite (free plan).
+  "durable_objects": {
+    "bindings": [{ "name": "ERP", "class_name": "ErpDatabase" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ErpDatabase"] }],
+
+  // Use the small Cloudflare stand-ins instead of the computer-only packages.
+  "alias": {
+    "express": "./server/src/worker/express.js",
+    "cookie-parser": "./server/src/worker/cookie-parser.js"
+  },
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+
+  // The factory's time zone, so "today" changes at local midnight.
+  "vars": { "APP_TZ": "Asia/Karachi" },
+
+  "observability": { "enabled": true }
+}

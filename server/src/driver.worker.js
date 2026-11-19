@@ -80,13 +80,21 @@ class Statement {
   }
 }
 
+// Cloudflare can restart the Durable Object at any time (e.g. after being idle);
+// each new instance brings its own storage handle, so always use the current one.
+const storageNow = () => {
+  const s = globalThis.__ERP_STORAGE;
+  if (!s) throw new Error('Durable Object storage is not ready');
+  return s;
+};
+
 class DurableSqlite {
-  constructor(storage) {
-    this.storage = storage;
-    this.sql = storage.sql;
+  constructor() {
     this.kind = 'durable-object';
     this.sql.exec('CREATE TABLE IF NOT EXISTS _erp_meta (key TEXT PRIMARY KEY, value TEXT)');
   }
+  get storage() { return storageNow(); }
+  get sql() { return storageNow().sql; }
   prepare(sql) { return new Statement(this, sql); }
   exec(sql) {
     try { this.sql.exec(sql); } catch (e) { throw translate(e); }
@@ -116,7 +124,5 @@ class DurableSqlite {
 }
 
 export function openDatabase() {
-  const storage = globalThis.__ERP_STORAGE;
-  if (!storage) throw new Error('Durable Object storage is not ready');
-  return new DurableSqlite(storage);
+  return new DurableSqlite();
 }

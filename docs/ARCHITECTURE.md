@@ -309,3 +309,15 @@ The recipe changes from batch to batch, so there is no separate Recipes screen. 
 - `POST /api/production` with `{ product_id, items: [{ item_id, qty }], qty_produced, other_cost, date, notes }`. Every material must be an active raw material, listed once, and in stock; `qty_produced` is required. The batch is stored with `recipe_id = NULL`, `runs = 1`; its `production_consumption` rows are the recipe of record, and the next batch starts from them.
 - `POST /api/production/preview` takes the same body. The older `{ recipe_id, runs }` form still works for both.
 - Being an ingredient of an old saved recipe no longer blocks deleting a material; deleting removes it from those recipes.
+
+## Two ways to run: computer or Cloudflare
+- `server/src/app.js` builds the app (all API routes). `server/src/index.js` is the computer version: Express on one port, plus the built screens from `client/dist`. `server/src/worker.js` is the Cloudflare version: static assets serve the screens, and `/api/*` goes to one Durable Object (`ErpDatabase`, named `factory`) that runs the same app.
+- The database comes from `#driver` (`server/package.json` imports): `driver.node.js` opens the SQLite file with better-sqlite3; `driver.worker.js` wraps Durable Object SQLite with the same small API (`prepare().get/all/run`, `exec`, `transaction`). It turns `@name` parameters into `?`, maps errors to better-sqlite3's shape (`err.code = SQLITE_CONSTRAINT_*`, trigger messages exact), keeps the schema version in `_erp_meta` (Cloudflare forbids `PRAGMA user_version`), and always uses the live storage handle because Cloudflare can restart the object.
+- On Cloudflare, `express` and `cookie-parser` are replaced (wrangler `alias`) by `server/src/worker/express.js`, a small stand-in for the parts the routes use.
+- `today()` (`clock.js`) uses `APP_TZ` so the date changes at the factory's midnight, not UTC.
+
+## Data file, restore and first-time setup (`routes/data.js`)
+- `GET /api/backup` (admin): every business table as JSON (`format: soap-factory-erp-data`, `schema_version`). Sessions are never included.
+- `POST /api/backup/restore` (admin): replaces all data in one transaction. Year-lock triggers are dropped and re-created, foreign keys are deferred, and the file must have the same schema version. Everyone logs in again.
+- `GET /api/setup/status`, `POST /api/setup/restore` (public): only while the system is brand new (no login ever, one user, no business data, not set up). It loads an optional data file and sets an admin's password (8+ characters, not the starting one). After that, setup is closed for good.
+- Through Cloudflare (`cf-connecting-ip` present), logging in with the starting password `admin123` is refused. Login and setup attempts are limited to 10 per 5 minutes per visitor IP.

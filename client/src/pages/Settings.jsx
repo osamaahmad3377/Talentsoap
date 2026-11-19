@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Save, Plus, Download, KeyRound, Building, Users as UsersIcon } from 'lucide-react';
+import { Save, Plus, KeyRound, Building, Users as UsersIcon } from 'lucide-react';
 import { useFetch, useApp, useAction, api, fmtDate } from '../lib.jsx';
 import { PageHead, Async, Field, Modal, DataTable, Badge, Alert } from '../components.jsx';
+import { DataFileCard } from './Setup.jsx';
 
 export default function Settings() {
   const { can } = useApp();
@@ -12,13 +13,7 @@ export default function Settings() {
         {can('admin') && <Company />}
         <Password />
         {can('admin') && <UsersCard />}
-        {can('admin') && (
-          <div className="card">
-            <div className="card-head"><h2><Download size={20} style={{ verticalAlign: -3 }} /> Backup</h2></div>
-            <p className="muted" style={{ marginTop: 0 }}>Download a complete copy of all data. Keep it on a USB drive or Google Drive — do this at least once a week.</p>
-            <a className="btn btn-primary btn-lg" href="/api/backup"><Download size={22} /> Download backup now</a>
-          </div>
-        )}
+        {can('admin') && <DataFileCard />}
       </div>
     </>
   );

@@ -682,3 +682,10 @@ a.rb-row:hover { background: var(--surface-2); }
 }
 .btn svg { flex: none; }
 .line > .btn { padding: 0; min-width: var(--tap); }
+
+/* First-time setup & data file */
+.login .card.setup { width: min(520px, 100%); }
+.file-btn { position: relative; overflow: hidden; cursor: pointer; }
+.file-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.data-file { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); }
+.data-file svg { flex: none; color: var(--primary); margin-top: 2px; }
