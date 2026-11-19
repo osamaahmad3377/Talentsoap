@@ -282,9 +282,7 @@ export function ItemForm({ item, kind, onClose, onSaved }) {
             {['kg', 'litre', 'g', 'pcs', 'dozen', 'carton', 'drum', 'bag'].map((u) => <option key={u}>{u}</option>)}
           </select>
         </Field>
-        {f.kind === 'raw' && <Field label="Tank / container" help="Where it is stored"><input className="input" value={f.container || ''} onChange={set('container')} placeholder="e.g. Tank 1" /></Field>}
         <Field label="Low-stock alert below" help="Warn me when stock falls to this"><NumberInput value={f.reorder_level} onChange={set('reorder_level')} /></Field>
-        <Field label="Selling price" help={f.kind === 'raw' ? 'Optional — only if you sometimes sell this material' : 'Default price on invoices'}><NumberInput value={f.sale_price} onChange={set('sale_price')} /></Field>
         {!isNew && !op && item.stock > 0 ? null : isNew || !op ? <>
           <Field label="Stock you have now" help="Optional opening stock"><NumberInput value={f.opening_qty} onChange={set('opening_qty')} /></Field>
           <Field label="Cost per unit" help="For the opening stock"><NumberInput value={f.opening_cost} onChange={set('opening_cost')} /></Field>
