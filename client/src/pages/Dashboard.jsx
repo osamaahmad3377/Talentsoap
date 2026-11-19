@@ -27,12 +27,12 @@ export default function Dashboard() {
 
       <nav className="quick" aria-label="Quick actions">
         <Link to="/sales/new"><span className="ico"><ShoppingCart size={28} /></span>New Sale</Link>
-        <Link to="/production/new"><span className="ico"><Factory size={28} /></span>Make Batch</Link>
         {can('manager') ? <Link to="/purchases/new"><span className="ico"><Truck size={28} /></span>New Purchase</Link>
           : <Link to="/stock"><span className="ico"><Boxes size={28} /></span>Check Stock</Link>}
-        <Link to="/staff"><span className="ico"><UserCheck size={28} /></span>Attendance</Link>
+        <Link to="/production/new"><span className="ico"><Factory size={28} /></span>Make a Batch</Link>
         {can('manager') ? <Link to="/expenses?new=1"><span className="ico"><Receipt size={28} /></span>Add Expense</Link>
           : <Link to="/trace"><span className="ico"><Boxes size={28} /></span>Product History</Link>}
+        <Link to="/staff"><span className="ico"><UserCheck size={28} /></span>Attendance</Link>
       </nav>
 
       <Async q={q}>{(d) => (
