@@ -1,25 +1,16 @@
-import Database from 'better-sqlite3';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+// The database: a SQLite file on a computer, or Cloudflare's Durable Object
+// SQLite when hosted there (see driver.node.js / driver.worker.js).
+import { openDatabase, SCHEMA_SQL } from '#driver';
 import { hashPassword } from './auth.js';
+import { today } from './clock.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const DB_FILE = process.env.DB_FILE || path.join(here, '..', 'data', 'factory.db');
-
-if (DB_FILE !== ':memory:') fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
-
-export const db = new Database(DB_FILE);
-db.pragma('journal_mode = WAL');   // safe concurrent reads while writing
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
-
-db.exec(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
+export const db = openDatabase();
+db.exec(SCHEMA_SQL);
 
 // ---------- helpers --------------------------------------------------
 export const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const r3 = (n) => Math.round((Number(n) + Number.EPSILON) * 1000) / 1000;
-export const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+export { today };
 
 /** Run fn inside one SQLite transaction (all-or-nothing). */
 export const tx = (fn) => db.transaction(fn)();
@@ -128,7 +119,7 @@ export function fyBoundsFor(d, startMonth = '07') {
 
 // ---------- migrations ------------------------------------------------
 // schema.sql describes a fresh install. Existing databases are upgraded here,
-// once per version (PRAGMA user_version). Each step is idempotent.
+// once per version (the schema version number). Each step is idempotent.
 function hasColumn(table, col) {
   return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
 }
@@ -238,9 +229,9 @@ const MIGRATIONS = [
   },
 ];
 {
-  const current = db.pragma('user_version', { simple: true });
+  const current = db.getVersion();
   for (let v = current; v < MIGRATIONS.length; v++) {
-    db.transaction(() => { MIGRATIONS[v](); db.pragma(`user_version = ${v + 1}`); })();
+    db.transaction(() => { MIGRATIONS[v](); db.setVersion(v + 1); })();
     console.log(`Database upgraded to version ${v + 1}`);
   }
 }

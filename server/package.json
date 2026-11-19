@@ -17,5 +17,12 @@
     "better-sqlite3": "^12.11.1",
     "cookie-parser": "^1.4.7",
     "express": "^4.22.3"
+  },
+  "imports": {
+    "#driver": {
+      "workerd": "./src/driver.worker.js",
+      "worker": "./src/driver.worker.js",
+      "default": "./src/driver.node.js"
+    }
   }
 }

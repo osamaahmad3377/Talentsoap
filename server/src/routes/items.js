@@ -82,14 +82,14 @@ r.get('/items/:id', (req, res) => {
   const stock = stockOf(item);
   // History limited to the selected financial year, with the stock brought forward into it
   const fyStart = req.fy?.start_date || '0000-01-01';
-  const asOf = req.asOf || new Date().toLocaleDateString('en-CA');
+  const asOf = req.asOf || today();
   const movements = db.prepare(`
     SELECT m.*, l.lot_code, p.name AS party_name FROM stock_movements m
     LEFT JOIN stock_lots l ON l.id = m.lot_id LEFT JOIN parties p ON p.id = m.party_id
     WHERE m.item_id = ? AND m.date BETWEEN ? AND ? ORDER BY m.id DESC LIMIT 300`).all(item.id, fyStart, asOf);
   const ob = db.prepare('SELECT COALESCE(SUM(qty),0) q, COALESCE(SUM(value),0) v FROM stock_movements WHERE item_id = ? AND date < ?').get(item.id, fyStart);
   const opening = { date: fyStart, qty: r3(ob.q), value: r2(ob.v), unit_cost: Math.abs(ob.q) > 1e-6 ? r2(ob.v / ob.q) : 0 };
-  const historic = asOf < new Date().toLocaleDateString('en-CA');
+  const historic = asOf < today();
   const out = { ...item, stock, low: item.reorder_level > 0 && stock <= item.reorder_level, movements, opening, as_of: asOf };
   if (req.user.role !== 'staff') out.opening_entries = openingEntries(item);
   if (historic) {

@@ -5,7 +5,11 @@ import { bad, required } from '../errors.js';
 
 const r = Router();      // public: login / logout
 const pr = Router();     // private: everything else (mounted behind requireAuth)
-const isProd = process.env.NODE_ENV === 'production';
+
+/** Came in from the internet through Cloudflare (not from the factory network). */
+export const viaInternet = (req) => !!(req.headers['cf-connecting-ip'] || req.headers['cf-ray']);
+const isHttps = (req) => req.secure || req.headers['x-forwarded-proto'] === 'https' || /"scheme":"https"/.test(req.headers['cf-visitor'] || '');
+export const STARTING_PASSWORD = 'admin123';
 
 r.post('/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
@@ -13,8 +17,11 @@ r.post('/auth/login', async (req, res) => {
   if (!user || !verifyPassword(password || '', user.password_hash)) {
     return res.status(401).json({ error: 'Wrong username or password' });
   }
+  if (viaInternet(req) && String(password) === STARTING_PASSWORD) {
+    return res.status(403).json({ error: 'This account still has the starting password, which is not safe online. Log in on the factory computer and change it under Settings first.' });
+  }
   const { token, maxAge } = await createSession(user.id);
-  res.cookie('sid', token, { httpOnly: true, sameSite: 'lax', secure: isProd && process.env.HTTPS === '1', maxAge });
+  res.cookie('sid', token, { httpOnly: true, sameSite: 'lax', secure: isHttps(req), maxAge });
   audit(user.id, 'login', 'user', user.id);
   res.json({ id: user.id, username: user.username, full_name: user.full_name, role: user.role });
 });
@@ -32,6 +39,7 @@ pr.post('/auth/password', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (!verifyPassword(current || '', user.password_hash)) throw bad('Current password is wrong');
   if (!next || String(next).length < 6) throw bad('New password must be at least 6 characters');
+  if (String(next) === STARTING_PASSWORD) throw bad('Choose a new password, not the starting one');
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(next), req.user.id);
   res.json({ ok: true });
 });

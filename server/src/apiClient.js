@@ -16,7 +16,7 @@ export async function startClient(app, { username = 'admin', password = process.
   const api = {
     get: (u) => call('GET', u), post: (u, b) => call('POST', u, b || {}), put: (u, b) => call('PUT', u, b || {}), del: (u) => call('DELETE', u),
     close: () => new Promise((r) => server.close(r)),
-    fy: null, // set to a financial year id to act as the year switcher
+    base, fy: null, // set to a financial year id to act as the year switcher
   };
   await api.post('/auth/login', { username, password });
   return api;

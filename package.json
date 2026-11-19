@@ -12,5 +12,8 @@
     "dev:client": "npm --prefix client run dev",
     "seed": "npm --prefix server run seed",
     "test": "npm --prefix server test"
+  },
+  "devDependencies": {
+    "wrangler": "4.157.0"
   }
 }

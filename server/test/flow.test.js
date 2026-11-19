@@ -879,3 +879,73 @@ test('make a batch with its own ingredients, and the next batch starts from the 
   start = await api.get(`/production/start?product_id=${bar}`);
   assert.equal(start.source.batch_no, b.batch_no);
 });
+
+test('online safety: starting password refused over the internet, login limit per real visitor', async () => {
+  const base = api.base;
+  const login = (headers, password = 'admin123') => fetch(`${base}/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ username: 'admin', password }),
+  });
+  // on the factory network the starting password still works (to change it)
+  assert.equal((await login({})).status, 200);
+  // through Cloudflare it is refused
+  const r = await login({ 'cf-connecting-ip': '203.0.113.7', 'cf-visitor': '{"scheme":"https"}' });
+  assert.equal(r.status, 403);
+  assert.match((await r.json()).error, /starting password/);
+  // the cookie is marked secure when the visitor is on https
+  await api.post('/users', { username: 'online1', full_name: 'Online', role: 'staff', password: 'strongpass1' });
+  const ok = await fetch(`${base}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'cf-connecting-ip': '203.0.113.8', 'cf-visitor': '{"scheme":"https"}' }, body: JSON.stringify({ username: 'online1', password: 'strongpass1' }) });
+  assert.equal(ok.status, 200);
+  assert.match(ok.headers.get('set-cookie'), /Secure/i);
+  // one visitor guessing passwords is blocked without locking out another visitor
+  for (let i = 0; i < 10; i++) await login({ 'cf-connecting-ip': '198.51.100.9' }, 'wrong-' + i);
+  assert.equal((await login({ 'cf-connecting-ip': '198.51.100.9' }, 'x')).status, 429);
+  assert.equal((await fetch(`${base}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'cf-connecting-ip': '198.51.100.10' }, body: JSON.stringify({ username: 'online1', password: 'strongpass1' }) })).status, 200);
+});
+
+test('data file: download everything, restore it, and get exactly the same books back', async () => {
+  const snapshot = () => ({
+    items: db.prepare('SELECT id, name, stock_qty, avg_cost, active FROM items ORDER BY id').all(),
+    lots: db.prepare('SELECT id, qty_remaining, unit_cost FROM stock_lots ORDER BY id').all(),
+    tb: db.prepare('SELECT account_id, ROUND(SUM(debit),2) d, ROUND(SUM(credit),2) c FROM journal_lines GROUP BY account_id ORDER BY account_id').all(),
+    years: db.prepare('SELECT id, status FROM financial_years ORDER BY id').all(),
+    seq: db.prepare('SELECT * FROM sequences ORDER BY name').all(),
+    stamped: db.prepare('SELECT COUNT(*) n FROM journal_entries WHERE fiscal_year_id IS NULL').get().n,
+  });
+  const before = snapshot();
+  assert.equal((await fetch(`${api.base}/backup`)).status, 401, 'not without logging in');
+  const dump = await api.get('/backup');
+  assert.equal(dump.format, 'soap-factory-erp-data');
+  assert.ok(!('sessions' in dump.tables), 'logins are never in the file');
+  assert.ok(dump.tables.items.rows.length > 0);
+
+  // change something after the download
+  await api.post('/items', { kind: 'raw', name: 'After Backup Item', unit: 'kg' });
+  assert.ok(db.prepare("SELECT 1 FROM items WHERE name = 'After Backup Item'").get());
+
+  // a wrong file is refused and nothing changes
+  await assert.rejects(api.post('/backup/restore', { format: 'x' }), /not a data file/);
+  await assert.rejects(api.post('/backup/restore', { ...dump, schema_version: 999 }), /newer version/);
+  assert.ok(db.prepare("SELECT 1 FROM items WHERE name = 'After Backup Item'").get(), 'untouched after a refused file');
+
+  const r = await api.post('/backup/restore', dump);
+  assert.ok(r.relogin);
+  assert.deepEqual(snapshot(), before, 'identical books after restore');
+  assert.ok(!db.prepare("SELECT 1 FROM items WHERE name = 'After Backup Item'").get(), 'later change undone');
+  // year locks are back in force
+  const closed = db.prepare("SELECT * FROM financial_years WHERE status = 'closed' LIMIT 1").get();
+  if (closed) assert.throws(() => db.prepare('INSERT INTO expenses(date, category_id, amount) VALUES (?, 1, 1)').run(closed.start_date), /FY_CLOSED/);
+  // everyone has to log in again; the same password still works
+  await assert.rejects(api.get('/items'), /401/);
+  await api.close();
+  api = await startClient(createApp());
+  assert.ok((await api.get('/items')).length > 0);
+  // non-admins cannot download or restore
+  await api.post('/users', { username: 'clerk9', full_name: 'Clerk', role: 'manager', password: 'clerkpass9' });
+  const clerk = await startClient(createApp(), { username: 'clerk9', password: 'clerkpass9' });
+  await assert.rejects(clerk.get('/backup'), /403/);
+  await assert.rejects(clerk.post('/backup/restore', dump), /403/);
+  await clerk.close();
+  // setup is closed on a system that is in use
+  assert.equal((await api.get('/setup/status')).fresh, false);
+  await assert.rejects(api.post('/setup/restore', { password: 'whatever123' }), /already set up/);
+});

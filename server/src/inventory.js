@@ -10,7 +10,7 @@
  *
  * All functions here must run inside a db transaction (see tx()).
  */
-import { db, r2, r3, nextNo } from './db.js';
+import { db, r2, r3, nextNo, today } from './db.js';
 import { bad } from './errors.js';
 
 export const EPS = 0.000001;
@@ -238,7 +238,7 @@ export function stockOut({ item, qty, date, type, ref_type, ref_id = null, note 
  * e.g. the closing stock of a past financial year.
  */
 export function listItemsWithStock(kind, asOf = null) {
-  if (asOf && asOf < new Date().toLocaleDateString('en-CA')) {
+  if (asOf && asOf < today()) {
     const rows = db.prepare(`
       SELECT i.*, c.name AS category_name, COALESCE(SUM(m.qty), 0) AS stock, COALESCE(SUM(m.value), 0) AS value
       FROM items i LEFT JOIN stock_movements m ON m.item_id = i.id AND m.date <= ?

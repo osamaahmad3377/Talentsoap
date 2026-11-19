@@ -1,3 +1,5 @@
+import { today } from './clock.js';
+
 export class HttpError extends Error {
   constructor(status, message) {
     super(message);
@@ -16,7 +18,7 @@ export function num(v, label, { min = 0, allowZero = false } = {}) {
 }
 
 export function date(v) {
-  if (!v) return new Date().toLocaleDateString('en-CA');
+  if (!v) return today();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw bad('Invalid date');
   return v;
 }
