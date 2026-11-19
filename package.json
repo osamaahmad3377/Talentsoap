@@ -1,0 +1,16 @@
+{
+  "name": "soap-factory-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ultra-simple ERP for a make-to-stock soap factory",
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix client install && npm run build",
+    "build": "npm --prefix client run build",
+    "start": "NODE_ENV=production npm --prefix server start",
+    "dev": "echo 'Run in two terminals: npm run dev:server  and  npm run dev:client'",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "seed": "npm --prefix server run seed",
+    "test": "npm --prefix server test"
+  }
+}
