@@ -949,3 +949,27 @@ test('data file: download everything, restore it, and get exactly the same books
   assert.equal((await api.get('/setup/status')).fresh, false);
   await assert.rejects(api.post('/setup/restore', { password: 'whatever123' }), /already set up/);
 });
+
+test('one phone number belongs to only one customer and only one supplier', async () => {
+  const a = (await api.post('/parties', { type: 'customer', name: 'Phone Shop A', phone: '0300-1112233' })).id;
+  // the same number written differently is still refused
+  for (const phone of ['03001112233', '+92 300 1112233', '923001112233', '0092-300-111-2233']) {
+    await assert.rejects(api.post('/parties', { type: 'customer', name: 'Phone Shop B', phone }), /already saved for the customer "Phone Shop A"/);
+  }
+  // a supplier may share a customer's number (the same person can buy and sell)
+  const s1 = (await api.post('/parties', { type: 'supplier', name: 'Phone Supplier 1', phone: '0300 1112233' })).id;
+  await assert.rejects(api.post('/parties', { type: 'supplier', name: 'Phone Supplier 2', phone: '+923001112233' }), /already saved for the supplier "Phone Supplier 1"/);
+  // editing: moving onto a taken number is refused; keeping your own number is fine
+  const b = (await api.post('/parties', { type: 'customer', name: 'Phone Shop C', phone: '0311-0000001' })).id;
+  await assert.rejects(api.put(`/parties/${b}`, { phone: '0300-1112233' }), /already saved/);
+  await api.put(`/parties/${a}`, { name: 'Phone Shop A (Main)', phone: '0300-1112233' });
+  // no number, or the same blank number, never clashes
+  await api.post('/parties', { type: 'customer', name: 'No Phone 1' });
+  await api.post('/parties', { type: 'customer', name: 'No Phone 2', phone: '' });
+  // an old pair that already shares a number can still be edited (name, address)
+  const d1 = db.prepare("INSERT INTO parties(type, name, phone) VALUES ('customer', 'Old Dup 1', '0399-7654321') RETURNING id").get().id;
+  const d2 = db.prepare("INSERT INTO parties(type, name, phone) VALUES ('customer', 'Old Dup 2', '0399-7654321') RETURNING id").get().id;
+  await api.put(`/parties/${d2}`, { name: 'Old Dup 2 renamed', address: 'Kamra' });
+  assert.equal(db.prepare('SELECT name FROM parties WHERE id = ?').get(d2).name, 'Old Dup 2 renamed');
+  assert.ok(d1 && s1);
+});

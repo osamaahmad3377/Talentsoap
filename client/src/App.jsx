@@ -65,11 +65,12 @@ function Shell({ children }) {
           ? <div key={i} className="nav-group">{n.group}</div>
           : <NavLink key={n.to} to={n.to} end={n.end} className="nav-link"><n.icon size={22} />{n.label}</NavLink>)}
         <div className="sidebar-foot">
+          <div className="avatar" aria-hidden="true">{me.full_name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <b style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.full_name}</b>
-            <span style={{ opacity: .75, textTransform: 'capitalize' }}>{me.role}</span>
+            <b className="who">{me.full_name}</b>
+            <span className="role">{me.role}</span>
           </div>
-          <button className="btn btn-sm" onClick={logout}><LogOut size={18} /> Log out</button>
+          <button className="btn btn-ghost btn-icon" onClick={logout} title="Log out" aria-label="Log out"><LogOut size={18} /></button>
         </div>
       </aside>
 

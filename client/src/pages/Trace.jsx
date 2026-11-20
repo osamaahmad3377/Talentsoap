@@ -78,7 +78,7 @@ export function LotTrace() {
 
           {/* 1. Batch facts */}
           <div className="card">
-            <div className="section-title"><span className="dot" style={{ background: '#0f766e' }}><Factory size={18} /></span><h2>{made ? 'Manufacturing batch' : 'Where this stock came from'}</h2></div>
+            <div className="section-title"><span className="dot" style={{ background: '#ea580c' }}><Factory size={18} /></span><h2>{made ? 'Manufacturing batch' : 'Where this stock came from'}</h2></div>
             {made && (
               <div className="grid grid-4">
                 <Stat label="Batch ID" value={<span className="mono" style={{ fontSize: '1.2rem' }}>{batch.batch_no}</span>} hint={batch.recipe_name} />

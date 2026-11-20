@@ -57,7 +57,7 @@ export function NewPurchase() {
   const [payMode, setPayMode] = useState('credit');
   const [paidPart, setPaidPart] = useState('');
   const [pay, setPay] = useState(emptyPayment);
-  const [newSup, setNewSup] = useState(false);
+  const [newSup, setNewSup] = useState(null); // null = closed, otherwise the typed name
   const [run, busy] = useAction();
 
   const items = (itemsQ.data || []).filter((i) => i.kind !== 'finished');
@@ -81,8 +81,7 @@ export function NewPurchase() {
         <div className="card">
           <div className="form-grid">
             <Field label="Supplier">
-              <Picker options={suppliers} value={f.supplier_id} onChange={(v) => setF({ ...f, supplier_id: v })} placeholder="Search supplier…" autoFocus />
-              <div><button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => setNewSup(true)}><Plus size={16} /> New supplier</button></div>
+              <Picker options={suppliers} value={f.supplier_id} onChange={(v) => setF({ ...f, supplier_id: v })} placeholder="Search supplier…" autoFocus noun="supplier" onCreate={(name) => setNewSup(name)} />
             </Field>
             <Field label="Supplier bill no."><input className="input" value={f.supplier_bill_no} onChange={(e) => setF({ ...f, supplier_bill_no: e.target.value })} placeholder="Optional" /></Field>
             <Field label="Date"><input className="input" type="date" value={f.date} max={today()} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
@@ -142,7 +141,7 @@ export function NewPurchase() {
           <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 18 }} disabled={!valid || busy} onClick={save}><Save size={22} /> Save purchase</button>
         </div>
       </div>
-      {newSup && <QuickParty type="supplier" onClose={() => setNewSup(false)} onSaved={(id) => { setNewSup(false); supQ.reload(); setF((x) => ({ ...x, supplier_id: id })); }} />}
+      {newSup !== null && <QuickParty type="supplier" initialName={newSup} onClose={() => setNewSup(null)} onSaved={(id) => { setNewSup(null); supQ.reload(); setF((x) => ({ ...x, supplier_id: id })); }} />}
     </>
   );
 }

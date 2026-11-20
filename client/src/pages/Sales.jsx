@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Plus, Trash2, Printer, Ban, Save, UserPlus, MessageCircle, ChevronLeft, ChevronRight, Lock, Undo2 } from 'lucide-react';
+import { Plus, Trash2, Printer, Ban, Save, MessageCircle, ChevronLeft, ChevronRight, Lock, Undo2 } from 'lucide-react';
 import { ReturnModal, InvoiceReturns } from './Returns.jsx';
 import { PaymentPicker, MethodBadge, MethodFilter, emptyPayment, paymentBody, useFunds, METHOD_LABEL, METHOD_ICON } from '../payment.jsx';
 import { useFetch, useMoney, useApp, useAction, api, qty, fmtDate, today, thisMonth, fyStartMonth, payLabel } from '../lib.jsx';
@@ -100,7 +100,7 @@ export function NewSale() {
   const [paidPart, setPaidPart] = useState('');
   const [pay, setPay] = useState(emptyPayment);
   const [notes, setNotes] = useState('');
-  const [newCust, setNewCust] = useState(false);
+  const [newCust, setNewCust] = useState(null); // null = closed, otherwise the typed name
   const [run, busy] = useAction();
 
   // finished goods first, then trading items, then raw materials (sold occasionally)
@@ -127,7 +127,6 @@ export function NewSale() {
   const paid = payMode === 'cash' ? total : payMode === 'credit' ? 0 : Number(paidPart) || 0;
   const over = lines.filter((l) => l.item_id && Number(l.qty) > (l.stock ?? Infinity));
   const valid = customer && lines.some((l) => l.item_id && Number(l.qty) > 0) && over.length === 0 && paid <= total;
-  const walkIn = custQ.data?.find((c) => c.name === 'Walk-in Customer');
 
   const save = () => run(() => api.post('/sales', {
     customer_id: customer, date, discount, notes, paid, ...paymentBody(pay),
@@ -142,11 +141,7 @@ export function NewSale() {
         <div className="card">
           <div className="form-grid">
             <Field label="Customer">
-              <Picker options={customers} value={customer} onChange={setCustomer} placeholder="Search customer…" autoFocus />
-              <div className="row" style={{ gap: 8, marginTop: 6 }}>
-                {walkIn && <button className="btn btn-sm" onClick={() => { setCustomer(walkIn.id); setPayMode('cash'); }}>Walk-in (cash)</button>}
-                <button className="btn btn-sm" onClick={() => setNewCust(true)}><UserPlus size={16} /> New customer</button>
-              </div>
+              <Picker options={customers} value={customer} onChange={setCustomer} placeholder="Search customer…" autoFocus noun="customer" onCreate={(name) => setNewCust(name)} />
             </Field>
             <Field label="Date"><input className="input" type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} /></Field>
           </div>
@@ -237,13 +232,13 @@ export function NewSale() {
           {!can('manager') && <div className="small muted center" style={{ marginTop: 8 }}>Only a manager can cancel an invoice after saving.</div>}
         </div>
       </div>
-      {newCust && <QuickParty type="customer" onClose={() => setNewCust(false)} onSaved={(id) => { setNewCust(false); custQ.reload(); setCustomer(id); }} />}
+      {newCust !== null && <QuickParty type="customer" initialName={newCust} onClose={() => setNewCust(null)} onSaved={(id) => { setNewCust(null); custQ.reload(); setCustomer(id); }} />}
     </>
   );
 }
 
-export function QuickParty({ type, onClose, onSaved }) {
-  const [f, setF] = useState({ name: '', phone: '', address: '', opening_balance: '' });
+export function QuickParty({ type, onClose, onSaved, initialName = '' }) {
+  const [f, setF] = useState({ name: initialName, phone: '', address: '', opening_balance: '' });
   const [run, busy] = useAction();
   const save = () => run(() => api.post('/parties', { ...f, type }), 'Saved').then((r) => r && onSaved(r.id));
   return (

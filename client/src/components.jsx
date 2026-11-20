@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, X, ArrowLeft, Inbox, AlertTriangle, Loader2, CheckCircle2, Info } from 'lucide-react';
+import { Search, X, ArrowLeft, Inbox, AlertTriangle, Loader2, CheckCircle2, Info, Plus } from 'lucide-react';
 
 export function PageHead({ title, sub, back, actions }) {
   return (
@@ -187,48 +188,102 @@ export function DataTable({ rows, columns, onRow, rowClass, searchKeys, placehol
  * Big searchable dropdown — easier than a native <select> with 100 entries.
  * options: [{ value, label, sub?, right? }]
  */
-export function Picker({ options, value, onChange, placeholder = 'Tap to choose…', autoFocus }) {
+/**
+ * Searchable dropdown. The list is drawn on the top layer of the page (a portal
+ * with fixed position), so it is always in front: never hidden behind the next
+ * card, never cut off by a pop-up window or a scrolling area. It opens upwards
+ * when there is more room above.
+ */
+export function Picker({ options, value, onChange, placeholder = 'Tap to choose…', autoFocus, onCreate, noun = 'item' }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [hl, setHl] = useState(0);
+  const [pos, setPos] = useState(null);
   const ref = useRef(null);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
   const selected = options.find((o) => String(o.value) === String(value));
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
     return s ? options.filter((o) => `${o.label} ${o.sub || ''}`.toLowerCase().includes(s)) : options;
   }, [q, options]);
+
+  // close when tapping anywhere else (the list lives outside this element)
   useEffect(() => {
-    const h = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
+    const h = (e) => {
+      if (ref.current?.contains(e.target) || listRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
+
+  // keep the list stuck to the input while the page or a pop-up scrolls
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    const place = () => {
+      const r = inputRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const gap = 6, margin = 8;
+      const below = window.innerHeight - r.bottom - gap - margin;
+      const above = r.top - gap - margin;
+      const up = below < 220 && above > below;
+      setPos({
+        left: Math.max(margin, Math.min(r.left, window.innerWidth - r.width - margin)),
+        width: r.width,
+        maxHeight: Math.max(120, Math.min(320, up ? above : below)),
+        ...(up ? { bottom: window.innerHeight - r.top + gap } : { top: r.bottom + gap }),
+      });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); };
+  }, [open, list.length]);
+
+  // keep the highlighted row visible when moving with the arrow keys
+  useEffect(() => { listRef.current?.querySelector('.hl')?.scrollIntoView({ block: 'nearest' }); }, [hl]);
+
   const pick = (o) => { onChange(o.value, o); setOpen(false); setQ(''); };
+  const create = () => { const name = q.trim(); setOpen(false); setQ(''); onCreate(name); };
   return (
     <div className="picker" ref={ref}>
       <input
+        ref={inputRef}
         className="input" autoFocus={autoFocus}
         value={open ? q : selected?.label || ''}
         placeholder={selected ? selected.label : placeholder}
         onFocus={() => { setOpen(true); setHl(0); }}
+        onClick={() => setOpen(true)}
         onChange={(e) => { setQ(e.target.value); setOpen(true); setHl(0); }}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') { e.preventDefault(); setHl((h) => Math.min(h + 1, list.length - 1)); }
+          if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHl((h) => Math.min(h + 1, list.length - 1)); }
           if (e.key === 'ArrowUp') { e.preventDefault(); setHl((h) => Math.max(h - 1, 0)); }
           if (e.key === 'Enter' && open && list[hl]) { e.preventDefault(); pick(list[hl]); }
-          if (e.key === 'Escape') setOpen(false);
+          else if (e.key === 'Enter' && open && !list.length && onCreate) { e.preventDefault(); create(); }
+          if (e.key === 'Escape' || e.key === 'Tab') setOpen(false);
         }}
         role="combobox" aria-expanded={open}
       />
-      {open && (
-        <div className="picker-list" role="listbox">
-          {list.length === 0 && <div className="empty small">No match</div>}
+      {open && pos && createPortal(
+        <div className="picker-list" role="listbox" ref={listRef}
+          style={{ position: 'fixed', right: 'auto', zIndex: 1000, left: pos.left, width: pos.width, top: pos.top ?? 'auto', bottom: pos.bottom ?? 'auto', maxHeight: pos.maxHeight }}>
+          {list.length === 0 && (onCreate ? (
+            <div className="pl-none">
+              <div className="small muted">{q.trim() ? <>No {noun} called “<b>{q.trim()}</b>”</> : `No ${noun}s yet`}</div>
+              <button type="button" className="btn btn-primary btn-sm pl-add" onMouseDown={(e) => e.preventDefault()} onClick={create}>
+                <Plus size={14} /> {q.trim() ? <>Add “{q.trim()}” as new {noun}</> : `Add new ${noun}`}
+              </button>
+            </div>
+          ) : <div className="empty small">No match</div>)}
           {list.slice(0, 60).map((o, i) => (
-            <button type="button" key={o.value} className={i === hl ? 'hl' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(o)}>
-              <span><b>{o.label}</b>{o.sub && <div className="small muted">{o.sub}</div>}</span>
+            <button type="button" key={o.value} className={i === hl ? 'hl' : ''} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setHl(i)} onClick={() => pick(o)}>
+              <span className="pl-main"><b>{o.label}</b>{o.sub && <span className="small muted">{o.sub}</span>}</span>
               {o.right && <span className="small muted num">{o.right}</span>}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

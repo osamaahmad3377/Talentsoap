@@ -351,14 +351,38 @@ r.get('/parties', (req, res) => {
   res.json(rows.map((p) => ({ ...p, balance: r2(p.balance) })));
 });
 
+/**
+ * A phone number written differently (spaces, dashes, +92 / 0092 / leading 0)
+ * is still the same number: 0300-1234567, +92 300 1234567 and 923001234567 match.
+ */
+export function phoneKey(v) {
+  let d = String(v || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('0092')) d = d.slice(4);
+  else if (d.startsWith('92') && d.length === 12) d = d.slice(2);
+  else if (d.startsWith('0')) d = d.slice(1);
+  return d;
+}
+
+/** One phone number belongs to only one customer (and only one supplier). */
+function assertPhoneFree(type, phone, exceptId = null) {
+  const key = phoneKey(phone);
+  if (!key) return;
+  const hit = db.prepare("SELECT id, name, phone FROM parties WHERE type = ? AND active = 1 AND phone IS NOT NULL AND phone <> ''")
+    .all(type).find((x) => x.id !== exceptId && phoneKey(x.phone) === key);
+  if (hit) throw bad(`${hit.phone} is already saved for the ${type} "${hit.name}". One phone number can belong to only one ${type} — open "${hit.name}" instead.`);
+}
+
 r.post('/parties', requireRole('staff'), (req, res) => {
   const type = req.body.type === 'supplier' ? 'supplier' : 'customer';
   if (type === 'supplier' && req.user.role === 'staff') throw bad('No permission');
   const name = required(req.body.name, 'Name');
   const opening = r2(Number(req.body.opening_balance) || 0);
+  const phone = String(req.body.phone || '').trim() || null;
   const id = tx(() => {
+    assertPhoneFree(type, phone);
     const { id } = db.prepare('INSERT INTO parties(type, name, phone, address, notes) VALUES (?,?,?,?,?) RETURNING id')
-      .get(type, name, req.body.phone || null, req.body.address || null, req.body.notes || null);
+      .get(type, name, phone, req.body.address || null, req.body.notes || null);
     if (opening !== 0) {
       // Positive opening = customer owes us / we owe the supplier
       const amt = Math.abs(opening);
@@ -380,8 +404,11 @@ r.post('/parties', requireRole('staff'), (req, res) => {
 
 r.put('/parties/:id', requireRole('manager'), (req, res) => {
   const p = getParty(req.params.id);
+  const phone = req.body.phone === undefined ? p.phone : (String(req.body.phone || '').trim() || null);
+  // only a changed number is checked, so an old record that shares a number can still be edited
+  if (phoneKey(phone) !== phoneKey(p.phone)) assertPhoneFree(p.type, phone, p.id);
   db.prepare('UPDATE parties SET name=?, phone=?, address=?, notes=? WHERE id=?')
-    .run(required(req.body.name ?? p.name, 'Name'), req.body.phone ?? p.phone, req.body.address ?? p.address, req.body.notes ?? p.notes, p.id);
+    .run(required(req.body.name ?? p.name, 'Name'), phone, req.body.address ?? p.address, req.body.notes ?? p.notes, p.id);
   res.json({ ok: true });
 });
 

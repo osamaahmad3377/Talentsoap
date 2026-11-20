@@ -165,7 +165,7 @@ export function NewBatch() {
           {product && start && !loadingStart && (
             <div className="card">
               <h2 style={{ marginBottom: 12 }}>3. Finish</h2>
-              <div className="form-grid">
+              <div className="form-grid four">
                 <Field label={`How much was made (${product.unit})`} help={src ? 'Last time’s amount is filled in. Change it to the real count.' : 'Count what came out of this batch'}><NumberInput className="big" value={f.qty_produced} onChange={(v) => setF((x) => ({ ...x, qty_produced: v }))} /></Field>
                 <Field label="Date"><input className="input" type="date" value={f.date} max={today()} onChange={(e) => setF((x) => ({ ...x, date: e.target.value }))} /></Field>
                 {can('manager') && <Field label="Labour / power cost for this batch" help="Optional. Added to the batch cost."><NumberInput value={f.other_cost} onChange={(v) => setF((x) => ({ ...x, other_cost: v }))} /></Field>}
