@@ -1120,3 +1120,85 @@ a { color: #c2410c; }
   background: linear-gradient(180deg, #f06614, #c9460b); box-shadow: 0 1px 2px rgba(234, 88, 12, .3), inset 0 1px 0 rgba(255, 255, 255, .18);
 }
 .picker-list button.pl-add:hover { background: linear-gradient(180deg, #e35d10, #b53d0a); }
+
+/* =====================================================================
+   Professional polish — dashboard panels, quiet notices, focus rings
+   ===================================================================== */
+/* focus: a soft brand ring, only for keyboard users */
+:focus-visible { outline: 2px solid rgba(234, 88, 12, .55); outline-offset: 2px; border-radius: 8px; }
+.nav-link:focus-visible { outline-offset: 0; }
+:focus:not(:focus-visible) { outline: none; }
+
+/* page header */
+.page-head h1 { font-size: 1.55rem; letter-spacing: -.025em; }
+.section-title-sm { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin: 6px 0 8px; }
+.dash-head h2 { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); }
+.dash-head .small { margin-top: 2px; }
+
+/* quick actions: one action bar with hairline dividers */
+.quick {
+  gap: 1px; padding: 0; border-radius: 14px; overflow: hidden; margin-bottom: 14px;
+  background: rgba(15, 23, 42, .07); border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.quick a, .quick a:hover {
+  border: 0; border-radius: 0; box-shadow: none; transform: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: rgba(255, 255, 255, .8); min-height: 56px; padding: 10px 14px; font-weight: 500;
+}
+.quick a:hover { background: #fff; }
+.quick a:hover .ico { transform: scale(1.06); }
+.quick a .ico { width: 32px; height: 32px; border-radius: 9px; transition: transform .15s; }
+.quick a .ico svg { width: 17px; height: 17px; }
+
+/* KPI panels: four figures in one panel, hairline dividers (works in any column count) */
+.grid.kpi {
+  gap: 1px; border-radius: var(--radius); overflow: hidden;
+  background: rgba(15, 23, 42, .07); border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.grid.kpi > .stat {
+  border: 0; border-radius: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: rgba(255, 255, 255, .8); padding: 14px 16px; transform: none;
+}
+.grid.kpi > a.stat:hover { background: #fff; transform: none; box-shadow: none; }
+.grid.kpi .stat .value { font-size: 1.4rem; }
+.grid.kpi-hero .stat .value { font-size: 1.6rem; }
+.grid.kpi .stat .hint { font-size: .78rem; }
+.card .grid.kpi-flat { box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--border); }
+.card .grid.kpi-flat > .stat { background: rgba(255, 255, 255, .6); padding: 10px 12px; }
+.card .grid.kpi-flat .stat .value { font-size: 1.15rem; }
+.chg { font-weight: 500; font-size: .78rem; }
+
+/* quiet notice (low stock and similar) */
+.notice { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 9px 14px; margin-bottom: 14px; border-radius: 12px; font-size: .9rem; }
+.notice > svg { flex: none; width: 16px; height: 16px; }
+.notice-warn { background: rgba(255, 247, 237, .9); border: 1px solid rgba(234, 88, 12, .22); color: #9a3412; }
+.notice-text b { font-weight: 600; }
+.notice-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: .8rem; text-decoration: none; color: #7c2d12; background: rgba(255, 255, 255, .85); border: 1px solid rgba(234, 88, 12, .2); }
+.chip:hover { background: #fff; border-color: rgba(234, 88, 12, .4); }
+.chip .num { color: #c2410c; font-weight: 600; }
+.notice-link { margin-left: auto; font-weight: 500; font-size: .86rem; color: #c2410c; text-decoration: none; white-space: nowrap; }
+.notice-link:hover { text-decoration: underline; }
+
+/* chart & list cards on the dashboard */
+.chart-head h2 { font-size: 1rem; font-weight: 600; }
+.chart-head .muted, .chart-head .small { font-size: .82rem; }
+.dash-grid { margin-top: 12px; }
+.chart-card { margin-top: 12px; }
+
+@media (max-width: 640px) {
+  .quick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid.kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid.kpi .stat .value, .grid.kpi-hero .stat .value { font-size: 1.15rem; }
+  .notice-link { margin-left: 0; }
+}
+.chip { white-space: nowrap; }
+.card-head > a, .chart-head > a:not(.btn) { font-size: .86rem; font-weight: 500; color: #c2410c; text-decoration: none; }
+.card-head > a:hover, .chart-head > a:not(.btn):hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .notice { align-items: flex-start; }
+  .notice-text { flex: 1 1 calc(100% - 30px); }
+  .notice-chips { flex: 1 1 100%; }
+  .chip { white-space: normal; }
+}

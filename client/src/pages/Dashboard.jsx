@@ -38,25 +38,22 @@ export default function Dashboard() {
       <Async q={q}>{(d) => (
         <>
           {d.low_stock.length > 0 && !pastYear && (
-            <div className="alert alert-danger" style={{ marginBottom: 18 }}>
-              <AlertTriangle size={24} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '1.05rem' }}>{d.low_stock.length} item{d.low_stock.length > 1 ? 's are' : ' is'} running low — order soon</div>
-                <div className="row" style={{ marginTop: 8, gap: 8 }}>
-                  {d.low_stock.map((i) => (
-                    <Link key={i.id} to={`/stock/${i.id}`} className="badge badge-danger" style={{ fontSize: '.9rem', padding: '6px 12px', textDecoration: 'none' }}>
-                      {i.name}: {qty(i.stock, i.unit)} left
-                    </Link>
-                  ))}
-                </div>
+            <div className="notice notice-warn" role="status">
+              <AlertTriangle size={16} />
+              <span className="notice-text"><b>{d.low_stock.length} item{d.low_stock.length > 1 ? 's' : ''} running low</b> — order soon</span>
+              <div className="notice-chips">
+                {d.low_stock.map((i) => (
+                  <Link key={i.id} to={`/stock/${i.id}`} className="chip">{i.name} <span className="num">{qty(i.stock, i.unit)}</span></Link>
+                ))}
               </div>
+              <Link to="/stock" className="notice-link">View stock</Link>
             </div>
           )}
 
           {can('manager') && d.month && (
             <>
-              <h2 style={{ margin: '4px 0 12px' }}>{pastYear ? `On ${fmtDate(d.today)}` : 'Today'}</h2>
-              <div className="grid grid-4">
+              <h2 className="section-title-sm">{pastYear ? `On ${fmtDate(d.today)}` : 'Today'}</h2>
+              <div className="grid grid-4 kpi">
                 <Stat icon={ShoppingCart} label={pastYear ? 'Sales that day' : 'Sales today'} value={money(d.sales_today.total)} hint={`${d.sales_today.count} invoice${d.sales_today.count === 1 ? '' : 's'}`} to="/sales" />
                 <Stat icon={ArrowDownCircle} label="Money received" value={money(d.cash_in_today)} tone="good" to="/cash" />
                 <Stat icon={ArrowUpCircle} label="Money paid out" value={money(d.cash_out_today)} hint={`Expenses: ${money(d.expenses_today)}`} to="/cash" />
@@ -84,7 +81,7 @@ export default function Dashboard() {
 {!pastYear && (
             <div className="card">
               <div className="card-head"><h2>Attendance today</h2><Link to="/staff">Mark now</Link></div>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+              <div className="grid kpi kpi-flat" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                 <Stat label="Present" value={int(d.attendance.P)} tone="good" />
                 <Stat label="Absent" value={int(d.attendance.A)} tone={d.attendance.A ? 'bad' : ''} />
                 <Stat label="Half day / Leave" value={`${int(d.attendance.H)} / ${int(d.attendance.L)}`} />
@@ -150,7 +147,7 @@ function Analytics({ manager }) {
   const vs = { month: 'last month', last_month: 'the month before', quarter: 'previous 3 months', year: 'same time last year' }[period];
 
   return (
-    <section style={{ marginTop: 26 }}>
+    <section style={{ marginTop: 24 }}>
       <div className="dash-head">
         <div>
           <h2>Business performance</h2>
@@ -186,7 +183,7 @@ function ManagerAnalytics({ a, money, vs }) {
 
   return (
     <>
-      <div className="grid grid-4">
+      <div className="grid grid-4 kpi kpi-hero">
         <Stat icon={TrendingUp} label="Sales" value={money(k.sales)} to="/sales"
           hint={<><Change now={k.sales} before={p.sales} vs={vs} /><div>{k.invoices} invoice{k.invoices === 1 ? '' : 's'} · avg {money(k.avg_invoice)}</div></>} />
         <Stat icon={Percent} label="Gross profit" value={money(k.gross_profit)} to="/finance"
@@ -196,7 +193,7 @@ function ManagerAnalytics({ a, money, vs }) {
         <Stat icon={k.net_profit >= 0 ? PiggyBank : TrendingDown} label={k.net_profit >= 0 ? 'Net profit' : 'Net loss'} value={money(k.net_profit)} tone={k.net_profit >= 0 ? 'good' : 'bad'} to="/finance"
           hint={<><Change now={k.net_profit} before={p.net_profit} vs={vs} /><div>{margin(k.net_profit)}</div></>} />
       </div>
-      <div className="grid grid-4" style={{ marginTop: 14 }}>
+      <div className="grid grid-4 kpi" style={{ marginTop: 12 }}>
         <Stat icon={Wallet} label="Cash & bank" value={money(pos.cash + pos.bank)} hint={`Cash ${money(pos.cash)} · Bank ${money(pos.bank)}`} to="/cash" tone={pos.cash + pos.bank < 0 ? 'bad' : ''} />
         <Stat icon={Users} label="Customers owe us" value={money(pos.receivable)} hint={`${a.receivables.length} customer${a.receivables.length === 1 ? '' : 's'} with a balance`} to="/customers" />
         <Stat icon={Building2} label="We owe suppliers" value={money(pos.payable)} to="/suppliers" />
